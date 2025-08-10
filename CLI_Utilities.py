@@ -204,26 +204,26 @@ class CLI:
 
         # Display options
         print("\nAvailability Display Options:")
-        print("1) Compact Grid View")
-        print("2) Detailed Grid View") 
+        print("1) Compact Grid View (30 minutes)")
+        print("2) Detailed Grid View (4-hour blocks)") 
         print("3) Available Slots List")
-        print("4) All Views")
+        print("4 All Views")
         
         view_choice = self._inp("Choose display format (1-4): ").strip()
         
         if view_choice == "1":
-            self.display_service.display_compact_grid(sport, d, grid)
+            self.display_service.display_full_30min_grid(sport, d, grid)
         elif view_choice == "2":
             self.display_service.display_detailed_grid(sport, d, grid)
         elif view_choice == "3":
             self.display_service.display_available_slots_list(sport, d, grid)
         elif view_choice == "4":
-            self.display_service.display_compact_grid(sport, d, grid)
+            self.display_service.display_full_30min_grid(sport, d, grid)
             self.display_service.display_detailed_grid(sport, d, grid)
             self.display_service.display_available_slots_list(sport, d, grid)
         else:
-            # Default to compact view
-            self.display_service.display_compact_grid(sport, d, grid)
+            # Default to compact view (30-minute grid)
+            self.display_service.display_full_30min_grid(sport, d, grid)
         
         self.display_service.display_legend()
 

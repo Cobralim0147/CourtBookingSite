@@ -46,7 +46,7 @@ class AvailabilityDisplayService:
         """Display a compact grid showing availability for all courts."""
         print(f"\n{self._colorize_text('Availability Grid', Color.CYAN, True)} for {self._colorize_text(sport_name.title(), Color.YELLOW, True)} on {self._colorize_text(target_date.isoformat(), Color.YELLOW, True)}")
         print(f"{self._colorize_text('Green', Color.GREEN)} = Available, {self._colorize_text('Red', Color.RED)} = Not Available")
-        print("=" * 80)
+        print("=" * 120)
         
         if not availability_grid:
             print("No courts configured for this sport.")
@@ -56,68 +56,77 @@ class AvailabilityDisplayService:
         first_court = next(iter(availability_grid.keys()))
         time_slots = [slot_time for slot_time, _ in availability_grid[first_court]]
         
-        # Display header with time slots (every 2 hours for readability)
-        print(f"{'Court':<8}", end="")
+        # Display header with time slots (every hour for better readability)
+        print(f"{'Court':<6}", end="")
         for i, slot_time in enumerate(time_slots):
-            if i % 4 == 0:  # Every 2 hours (4 slots of 30 minutes)
-                print(f"{self._format_time_slot(slot_time):>5}", end=" ")
+            if i % 2 == 0:  # Every hour (2 slots of 30 minutes)
+                hour = slot_time.hour
+                print(f"{hour:02d}:00 {hour:02d}:30", end=" ")
         print()
         
         # Display availability for each court
         for court_id, slots in availability_grid.items():
-            print(f"{court_id:<8}", end="")
+            print(f"{court_id:<6}", end="")
             for i, (slot_time, is_available) in enumerate(slots):
-                if i % 4 == 0:  # Every 2 hours
-                    print(f"  {self._get_availability_symbol(is_available):<2}", end="  ")
-            print()
-    
-    def display_detailed_grid(self, sport_name: str, target_date: date, 
-                            availability_grid: Dict[str, List[Tuple[datetime, bool]]]) -> None:
-        """Display a detailed grid showing hourly availability."""
-        print(f"\n{self._colorize_text('Detailed Availability Grid', Color.CYAN, True)} for {self._colorize_text(sport_name.title(), Color.YELLOW, True)} on {self._colorize_text(target_date.isoformat(), Color.YELLOW, True)}")
-        print(f"{self._colorize_text('Green', Color.GREEN)} = Available, {self._colorize_text('Red', Color.RED)} = Not Available")
-        print("=" * 100)
-        
-        if not availability_grid:
-            print("No courts configured for this sport.")
-            return
-        
-        # Group slots by hour for better readability
-        courts = list(availability_grid.keys())
-        
-        for hour in range(0, 24, 2):  # Display every 2 hours
-            print(f"\n{self._colorize_text(f'{hour:02d}:00 - {(hour+2)%24:02d}:00', Color.BLUE, True)}")
-            print("-" * 60)
-            
-            # Header
-            print(f"{'Court':<8}", end="")
-            for h in range(hour, min(hour + 2, 24)):
-                print(f"{h:02d}:00 {h:02d}:30", end="  ")
-            print()
-            
-            # Court availability
-            for court_id in courts:
-                print(f"{court_id:<8}", end="")
-                slots = availability_grid[court_id]
-                
-                for h in range(hour, min(hour + 2, 24)):
-                    # Get slots for this hour (00 and 30 minute slots)
-                    slot_00_idx = h * 2
-                    slot_30_idx = h * 2 + 1
+                if i % 2 == 0:  # Display both 30-minute slots for each hour
+                    # Get current slot (00 minutes)
+                    symbol_00 = self._get_availability_symbol(is_available)
                     
-                    if slot_00_idx < len(slots):
-                        _, is_available_00 = slots[slot_00_idx]
-                        symbol_00 = self._get_availability_symbol(is_available_00)
-                    else:
-                        symbol_00 = " "
-                    
-                    if slot_30_idx < len(slots):
-                        _, is_available_30 = slots[slot_30_idx]
+                    # Get next slot (30 minutes) if it exists
+                    if i + 1 < len(slots):
+                        _, is_available_30 = slots[i + 1]
                         symbol_30 = self._get_availability_symbol(is_available_30)
                     else:
                         symbol_30 = " "
                     
                     print(f"  {symbol_00}   {symbol_30} ", end=" ")
+            print()
+    
+    def display_detailed_grid(self, sport_name: str, target_date: date, 
+                            availability_grid: Dict[str, List[Tuple[datetime, bool]]]) -> None:
+        """Display a detailed grid showing all 30-minute time slots."""
+        print(f"\n{self._colorize_text('Detailed Availability Grid', Color.CYAN, True)} for {self._colorize_text(sport_name.title(), Color.YELLOW, True)} on {self._colorize_text(target_date.isoformat(), Color.YELLOW, True)}")
+        print(f"{self._colorize_text('Green', Color.GREEN)} = Available, {self._colorize_text('Red', Color.RED)} = Not Available")
+        print("=" * 130)
+        
+        if not availability_grid:
+            print("No courts configured for this sport.")
+            return
+        
+        # Get time slots and courts
+        courts = list(availability_grid.keys())
+        first_court = courts[0]
+        time_slots = [slot_time for slot_time, _ in availability_grid[first_court]]
+        
+        # Display in 4-hour blocks for readability
+        for start_hour in range(0, 24, 4):
+            end_hour = min(start_hour + 4, 24)
+            print(f"\n{self._colorize_text(f'Time Block: {start_hour:02d}:00 - {end_hour:02d}:00', Color.BLUE, True)}")
+            print("-" * 100)
+            
+            # Header with all 30-minute slots in this 4-hour block
+            print(f"{'Court':<8}", end="")
+            start_slot = start_hour * 2  # 2 slots per hour
+            end_slot = min(end_hour * 2, len(time_slots))
+            
+            for slot_idx in range(start_slot, end_slot):
+                if slot_idx < len(time_slots):
+                    time_label = self._format_time_slot(time_slots[slot_idx])
+                    print(f"{time_label:>5}", end=" ")
+            print()
+            
+            # Display availability for each court in this time block
+            for court_id in courts:
+                print(f"{court_id:<8}", end="")
+                slots = availability_grid[court_id]
+                
+                for slot_idx in range(start_slot, end_slot):
+                    if slot_idx < len(slots):
+                        _, is_available = slots[slot_idx]
+                        symbol = self._get_availability_symbol(is_available)
+                        print(f"  {symbol:>2}", end=" ")
+                    else:
+                        print("     ", end=" ")
                 print()
     
     def display_available_slots_list(self, sport_name: str, target_date: date, 
@@ -181,3 +190,36 @@ class AvailabilityDisplayService:
         print(f"  {self._get_availability_symbol(True)} = {self._colorize_text('Available for booking', Color.GREEN)}")
         print(f"  {self._get_availability_symbol(False)} = {self._colorize_text('Not available (booked/held)', Color.RED)}")
         print("  Each slot = 30 minutes")
+    
+    def display_full_30min_grid(self, sport_name: str, target_date: date, 
+                              availability_grid: Dict[str, List[Tuple[datetime, bool]]]) -> None:
+        """Display a complete grid showing every 30-minute slot."""
+        print(f"\n{self._colorize_text('Complete 30-Minute Grid', Color.CYAN, True)} for {self._colorize_text(sport_name.title(), Color.YELLOW, True)} on {self._colorize_text(target_date.isoformat(), Color.YELLOW, True)}")
+        print(f"{self._colorize_text('Green', Color.GREEN)} = Available, {self._colorize_text('Red', Color.RED)} = Not Available")
+        print("=" * 150)
+        
+        if not availability_grid:
+            print("No courts configured for this sport.")
+            return
+        
+        # Get time slots and courts
+        courts = list(availability_grid.keys())
+        first_court = courts[0]
+        time_slots = [slot_time for slot_time, _ in availability_grid[first_court]]
+        
+        # Display header with all time slots
+        print(f"{'Court':<6}", end="")
+        for slot_time in time_slots:
+            time_label = self._format_time_slot(slot_time)
+            print(f"{time_label:>5}", end="|")
+        print()
+        
+        # Display availability for each court
+        for court_id in courts:
+            print(f"{court_id:<6}", end="")
+            slots = availability_grid[court_id]
+            
+            for _, is_available in slots:
+                symbol = self._get_availability_symbol(is_available)
+                print(f"  {symbol:>2}", end="")
+            print()
