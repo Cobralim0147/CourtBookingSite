@@ -48,9 +48,13 @@ class CLI:
             return None
 
     def _parse_time(self, s: str) -> Optional[time]:
-        # Support HH:MM (24h)
+        # Support HH:MM (24h) 
         try:
-            h, m = map(int, s.split(":"))
+            if ":" in s:
+                h, m = map(int, s.split(":"))
+            else:
+                h = int(s)
+                m = 0
             if h < 0 or h > 23 or m not in (0, 30):
                 return None
             return time(hour=h, minute=m)
@@ -229,9 +233,9 @@ class CLI:
 
         go = self._inp("\nPress B to start booking now for this sport, or Enter to return: ").strip().upper()
         if go == "B":
-            self.flow_book(pref_sport=sport)
+            self.flow_book(pref_sport=sport, pref_date=d)
 
-    def flow_book(self, pref_sport: Optional[str] = None):
+    def flow_book(self, pref_sport: Optional[str] = None, pref_date: Optional[date] = None):
         acc = self.current
         if not acc:
             print("Please login first.")
@@ -239,27 +243,38 @@ class CLI:
         sport = pref_sport or self._choose_sport()
         if not sport:
             return
-        d_str = self._inp("Enter date (YYYY-MM-DD): ")
-        d = self._parse_date(d_str)
-        if not d:
-            print("Invalid date.")
-            return
+        if pref_date is not None:
+            d = pref_date
+        else:
+            d_str = self._inp("Enter date (YYYY-MM-DD): ")
+            d = self._parse_date(d_str)
+            if not d:
+                print("Invalid date.")
+                return
         t_str = self._inp("Enter start time (HH:MM, 24h, minutes must be 00 or 30): ")
         t = self._parse_time(t_str)
         if not t:
             print("Invalid time (use HH:MM, minutes 00 or 30).")
             return
-        try:
-            dur_hours = float(self._inp("Enter duration in hours (e.g., 1.0, 1.5, 2): "))
-            if dur_hours <= 0:
-                raise ValueError
-        except Exception:
-            print("Invalid duration.")
-            return
-        # convert to 30-min slots
-        slots = int(dur_hours * 2)
-        if abs(dur_hours - (slots * 0.5)) > 1e-9:
-            print("Duration must be in increments of 0.5 hours.")
+        attempts = 0
+        dur_hours = None
+        while attempts < 3:
+            try:
+                dur_hours = float(self._inp("Enter duration in hours (e.g., 1.0, 1.5, 2): "))
+                if dur_hours <= 0:
+                    raise ValueError
+            except Exception:
+                print("Invalid duration.")
+                attempts += 1
+                continue
+            # convert to 30-min slots
+            slots = int(dur_hours * 2)
+            if abs(dur_hours - (slots * 0.5)) > 1e-9:
+                print("Duration must be in increments of 0.5 hours.")
+                attempts += 1
+                continue
+            break
+        else:
             return
 
         start_dt = datetime.combine(d, t)
